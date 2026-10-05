@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rando Matcher</title>
+<style>
+:root{--bg:#eef2e6;--card:#fbfcf7;--fg:#1f2a1c;--mut:#5f6d58;--ac:#2f6b3a;--line:#d3dcc6}
+@media(prefers-color-scheme:dark){:root{--bg:#121a12;--card:#1b261b;--fg:#e8f0df;--mut:#9bb08f;--ac:#7fd18b;--line:#2c3c2c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Georgia,"Times New Roman",serif;padding:24px 16px}
+.wrap{max-width:900px;margin:auto;display:grid;gap:20px;grid-template-columns:300px 1fr}
+@media(max-width:760px){.wrap{grid-template-columns:1fr}}
+h1{grid-column:1/-1;margin:0;font-size:1.8rem}
+h1 small{display:block;font-size:.95rem;font-weight:400;color:var(--mut);margin-top:4px}
+form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;align-self:start;display:grid;gap:16px}
+label,legend{font-weight:700;font-size:.95rem}
+fieldset{border:0;padding:0;margin:0}
+.row{display:flex;justify-content:space-between}
+output{color:var(--ac);font-weight:700}
+input[type=range],select{width:100%;accent-color:var(--ac)}
+select{padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chips label{font-weight:400;border:1px solid var(--line);border-radius:99px;padding:6px 12px;cursor:pointer}
+.chips input{position:absolute;opacity:0}
+.chips label:has(input:checked){background:var(--ac);color:var(--bg);border-color:var(--ac)}
+.chips label:has(input:focus-visible){outline:2px solid var(--ac)}
+#best{background:var(--ac);color:var(--bg);border-radius:14px;padding:16px;margin-bottom:12px}
+#best h2{margin:0 0 4px;font-size:1.2rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:grid;grid-template-columns:1fr auto;gap:4px 12px}
+.card.low{opacity:.55}
+.card h3{margin:0;font-size:1.05rem}
+.meta{color:var(--mut);font-size:.88rem;grid-column:1}
+.why{font-size:.82rem;color:var(--mut);grid-column:1/-1;font-style:italic}
+.score{grid-row:1/3;grid-column:2;font-size:1.4rem;font-weight:700;color:var(--ac);align-self:center}
+#best .score{color:var(--bg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Rando Matcher<small>Dis-nous ce que tu aimes, on classe les parcours pour toi.</small></h1>
+<form id="f" onsubmit="return false">
+  <div><label for="lvl">Niveau</label>
+    <select id="lvl"><option value="1">Débutant</option><option value="2" selected>Intermédiaire</option><option value="3">Confirmé</option></select></div>
+  <div><div class="row"><label for="hrs">Durée max</label><output id="hrsO"></output></div>
+    <input id="hrs" type="range" min="1" max="8" step=".5" value="4"></div>
+  <div><div class="row"><label for="elev">Dénivelé max</label><output id="elevO"></output></div>
+    <input id="elev" type="range" min="50" max="1000" step="50" value="500"></div>
+  <fieldset><legend>Paysages</legend><div class="chips" id="env"></div></fieldset>
+</form>
+<section><div id="best"></div><div id="res"></div></section>
+</div>
+<script>
+// Données d'exemple (valeurs approximatives, à enrichir avec une vraie source de données)
+const routes=[
+ {n:"Calanques de Sormiou à Morgiou",r:"Provence",t:"côte",km:9,h:3.5,d:450,lvl:2},
+ {n:"Cirque de Gavarnie",r:"Pyrénées",t:"montagne",km:14,h:5,d:500,lvl:2},
+ {n:"Sentier Blanc-Martel (Verdon)",r:"Provence",t:"montagne",km:15,h:7,d:600,lvl:3},
+ {n:"Sentier Denecourt, Fontainebleau",r:"Île-de-France",t:"forêt",km:12,h:3.5,d:150,lvl:1},
+ {n:"Lac Blanc",r:"Haute-Savoie",t:"lac",km:7,h:3.5,d:500,lvl:2},
+ {n:"Puy de Dôme (chemin des Muletiers)",r:"Auvergne",t:"montagne",km:6,h:2.5,d:400,lvl:2},
+ {n:"Pointe du Raz – GR34",r:"Bretagne",t:"côte",km:10,h:3,d:200,lvl:1},
+ {n:"Roc de Chère",r:"Annecy",t:"lac",km:6,h:2,d:250,lvl:1},
+ {n:"Boucle des étangs, Rambouillet",r:"Île-de-France",t:"forêt",km:9,h:2.5,d:80,lvl:1},
+ {n:"Falaises d'Étretat",r:"Normandie",t:"côte",km:7,h:2.5,d:220,lvl:1},
+ {n:"Cirque de Mafate",r:"La Réunion",t:"montagne",km:16,h:7,d:900,lvl:3}
+];
+const $=id=>document.getElementById(id);
+const envs=[...new Set(routes.map(r=>r.t))];
+$("env").innerHTML=envs.map(e=>`<label><input type="checkbox" value="${e}">${e}</label>`).join("");
+
+// Score sur 100 : on retire des points selon l'écart avec les préférences
+function score(r,p){
+  let s=100;const why=[];
+  if(p.env.length){ if(p.env.includes(r.t)) why.push("paysage souhaité"); else {s-=40;why.push("paysage différent")} }
+  const gap=r.lvl-p.lvl;
+  if(gap>0){s-=gap*25;why.push("plus dur que ton niveau")} else if(gap<0){s+=gap*8;why.push("plutôt facile pour toi")} else why.push("bon niveau");
+  if(r.h>p.hrs){s-=Math.min(40,(r.h-p.hrs)*15);why.push("trop long")} else why.push("durée OK");
+  if(r.d>p.elev){s-=Math.min(40,(r.d-p.elev)/10);why.push("trop de dénivelé")}
+  return {s:Math.max(0,Math.round(s)),why};
+}
+function render(){
+  const p={lvl:+$("lvl").value,hrs:+$("hrs").value,elev:+$("elev").value,env:[...document.querySelectorAll("#env input:checked")].map(i=>i.value)};
+  $("hrsO").textContent=p.hrs+" h";$("elevO").textContent=p.elev+" m";
+  const list=routes.map(r=>({r,...score(r,p)})).sort((a,b)=>b.s-a.s);
+  const info=x=>`${x.r.r} · ${x.r.km} km · ${x.r.h} h · +${x.r.d} m · ${x.r.t}`;
+  const b=list[0];
+  $("best").innerHTML=`<h2>${b.r.n}</h2><div class="card" style="background:none;border:0;padding:0;margin:0"><span class="meta" style="color:inherit">${info(b)}</span><span class="score">${b.s}%</span></div><div class="why" style="color:inherit">Notre choix : ${b.why.join(", ")}.</div>`;
+  $("res").innerHTML=list.slice(1).map(x=>`<article class="card ${x.s<50?"low":""}"><h3>${x.r.n}</h3><span class="score">${x.s}%</span><span class="meta">${info(x)}</span><span class="why">${x.why.join(" · ")}</span></article>`).join("");
+}
+$("f").addEventListener("input",render);render();
+</script>
+</body>
+</html>
