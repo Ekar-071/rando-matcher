@@ -1,16 +1,16 @@
-# Players3P
+# Rando Matcher
 
-Lecteur de musique web en HTML/CSS/JavaScript pur (sans dépendance).
+Application web qui classe des parcours de randonnée selon les préférences de l'utilisateur.
 
-## Fonctionnalités
-- Lecture, pause, précédent, suivant, barre de progression cliquable, volume
-- Mode aléatoire et répétition
-- Morceaux de démo générés en direct avec l'API Web Audio (synthétiseur)
-- Ajout de ses propres fichiers audio (lus localement, rien n'est envoyé)
-- Thème clair/sombre automatique, navigation clavier
+## Fonctionnement
+L'utilisateur règle son niveau, la durée maximale, le dénivelé maximal et ses paysages préférés.
+Chaque parcours reçoit un score sur 100 : on retire des points selon l'écart avec les préférences
+(paysage, niveau, durée, dénivelé). Le meilleur parcours est mis en avant, les autres sont triés
+avec l'explication du score.
 
 ## Lancer
 Ouvrir `index.html` dans un navigateur, ou activer GitHub Pages sur la branche `main`.
 
-## Pistes d'amélioration
-Playlists sauvegardées (localStorage), visualiseur de spectre réel (AnalyserNode), tests unitaires.
+## Limites et suite
+Les données sont des exemples approximatifs. Prochaines étapes : charger de vraies données
+(OpenStreetMap / API Rando), carte interactive (Leaflet), filtre par distance depuis l'utilisateur.
